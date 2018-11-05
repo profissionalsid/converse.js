@@ -11,7 +11,6 @@ import Backbone from "backbone";
 import BrowserStorage from "backbone.browserStorage";
 import Promise from "es6-promise/dist/es6-promise.auto";
 import _ from "./lodash.noconflict";
-import browserStorage from "backbone.browserStorage";
 import f from "./lodash.fp";
 import i18n from "./i18n";
 import moment from "moment";
@@ -21,9 +20,9 @@ import sizzle from "sizzle";
 import u from "./utils/core";
 
 Backbone = Backbone.noConflict();
+BrowserStorage.patch(Backbone);
 
 // Strophe globals
-const b64_sha1 = SHA1.b64_sha1;
 
 // Add Strophe Namespaces
 Strophe.addNamespace('CARBONS', 'urn:xmpp:carbons:2');
@@ -220,7 +219,6 @@ _converse.default_settings = {
     websocket_url: undefined,
     whitelisted_plugins: []
 };
-
 
 _converse.log = function (message, level, style='') {
     /* Logs messages to the browser's developer console.
@@ -646,7 +644,7 @@ _converse.initialize = function (settings, callback) {
         } else {
             const id = `converse.xmppstatus-${_converse.bare_jid}`;
             this.xmppstatus = new this.XMPPStatus({'id': id});
-            this.xmppstatus.browserStorage = new Backbone.BrowserStorage.session(id);
+            this.xmppstatus.browserStorage = new Backbone.BrowserStorage(id, 'session');
             this.xmppstatus.fetch({
                 'success': _.partial(_converse.onStatusInitialized, reconnecting),
                 'error': _.partial(_converse.onStatusInitialized, reconnecting)
@@ -660,21 +658,21 @@ _converse.initialize = function (settings, callback) {
          * What this means is that config values need to persist across
          * user sessions.
          */
-        const id = b64_sha1('converse.client-config');
+        const id = 'converse.client-config';
         _converse.config = new Backbone.Model({
             'id': id,
             'trusted': _converse.trusted && true || false,
             'storage': _converse.trusted ? 'local' : 'session'
         });
-        _converse.config.browserStorage = new Backbone.BrowserStorage.session(id);
+        _converse.config.browserStorage = new Backbone.BrowserStorage(id, 'session');
         _converse.config.fetch();
         _converse.emit('clientConfigInitialized');
     };
 
     this.initSession = function () {
-        const id = b64_sha1('converse.bosh-session');
-        _converse.session = new Backbone.Model({'id': id});
-        _converse.session.browserStorage = new Backbone.BrowserStorage.session(id);
+        const id = `converse.bosh-session-${_converse.bare_jid}`;
+        _converse.session = new Backbone.Model({id});
+        _converse.session.browserStorage = new Backbone.BrowserStorage(id, 'session');
         _converse.session.fetch();
         _converse.emit('sessionInitialized');
     };
@@ -1133,6 +1131,27 @@ _converse.initialize = function (settings, callback) {
         return _converse;
     };
 
+    this.initStorage = async function () {
+        // TODO: override `sync`, similarly to how localforage-backbone does
+        // it.
+        await BrowserStorage.sessionStorageInitialized;
+        _converse.sessionStorage = BrowserStorage.createInstance({
+            'name': 'session',
+            'driver': localForage.LOCALSTORAGE // FIXME
+        });
+
+        _converse.localStorage = BrowserStorage.createInstance({
+            'name': 'session',
+            'driver': localForage.LOCALSTORAGE
+        });
+
+        _converse.indexedDB = BrowserStorage.createInstance({
+            'name': 'indexed',
+            'driver': localForage.LOCALSTORAGE // FIXME
+        });
+        return Promise.all([_converse.sessionStorage, _converse.localStorage, _converse.indexedDB]);
+    };
+
     this.initPlugins = function () {
         // If initialize gets called a second time (e.g. during tests), then we
         // need to re-apply all plugins (for a new converse instance), and we
@@ -1177,7 +1196,8 @@ _converse.initialize = function (settings, callback) {
         this.connection = settings.connection;
     }
 
-    function finishInitialization () {
+    async function finishInitialization () {
+        await _converse.initStorage();
         _converse.initPlugins();
         _converse.initClientConfig();
         _converse.initConnection();
@@ -1749,7 +1769,7 @@ const converse = {
         'Strophe': Strophe,
         '_': _,
         'f': f,
-        'b64_sha1':  b64_sha1,
+        'b64_sha1':  SHA1.b64_sha1,
         'moment': moment,
         'sizzle': sizzle,
         'utils': u

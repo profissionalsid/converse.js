@@ -239,8 +239,8 @@ converse.plugins.add('converse-chatboxes', {
                 });
                 this.messages = new _converse.Messages();
                 const storage = _converse.config.get('storage');
-                this.messages.browserStorage = new Backbone.BrowserStorage[storage](
-                    b64_sha1(`converse.messages${this.get('jid')}${_converse.bare_jid}`));
+                const id = `converse.messages-${this.get('jid')}-${_converse.bare_jid}`;
+                this.messages.browserStorage = new Backbone.BrowserStorage(id, storage);
                 this.messages.chatbox = this;
 
                 this.messages.on('change:upload', (message) => {
@@ -626,8 +626,8 @@ converse.plugins.add('converse-chatboxes', {
             },
 
             onConnected () {
-                this.browserStorage = new Backbone.BrowserStorage.session(
-                    `converse.chatboxes-${_converse.bare_jid}`);
+                const id = `converse.chatboxes-${_converse.bare_jid}`;
+                this.browserStorage = new Backbone.BrowserStorage(id, 'session');
                 this.registerMessageHandler();
                 this.fetch({
                     'add': true,

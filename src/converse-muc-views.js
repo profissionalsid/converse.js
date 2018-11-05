@@ -74,9 +74,11 @@ converse.plugins.add('converse-muc-views', {
                 const { _converse } = this.__super__;
                 this.roomspanel = new _converse.RoomsPanel({
                     'model': new (_converse.RoomsPanelModel.extend({
-                        'id': b64_sha1(`converse.roomspanel${_converse.bare_jid}`), // Required by sessionStorage
-                        'browserStorage': new Backbone.BrowserStorage[_converse.config.get('storage')](
-                            b64_sha1(`converse.roomspanel${_converse.bare_jid}`))
+                        'id': `converse.roomspanel${_converse.bare_jid}`,
+                        'browserStorage': new Backbone.BrowserStorage(
+                            `converse.roomspanel${_converse.bare_jid}`,
+                            _converse.config.get('storage')
+                        )
                     }))()
                 });
                 this.roomspanel.model.fetch();

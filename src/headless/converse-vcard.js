@@ -8,7 +8,7 @@
 import converse from "./converse-core";
 import tpl_vcard from "./templates/vcard.html";
 
-const { Backbone, Promise, Strophe, _, $iq, $build, b64_sha1, moment, sizzle } = converse.env;
+const { Backbone, Promise, Strophe, _, $iq, $build, moment, sizzle } = converse.env;
 const u = converse.env.utils;
 
 
@@ -123,8 +123,10 @@ converse.plugins.add('converse-vcard', {
         /* Event handlers */
         _converse.initVCardCollection = function () {
             _converse.vcards = new _converse.VCards();
-            const id = b64_sha1(`converse.vcards`);
-            _converse.vcards.browserStorage = new Backbone.BrowserStorage[_converse.config.get('storage')](id);
+            _converse.vcards.browserStorage = new Backbone.BrowserStorage(
+                `converse.vcards`,
+                _converse.config.get('storage')
+            );
             _converse.vcards.fetch();
         }
         _converse.api.listen.on('sessionInitialized', _converse.initVCardCollection);

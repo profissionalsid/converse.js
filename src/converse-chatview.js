@@ -28,7 +28,7 @@ import tpl_user_details_modal from "templates/user_details_modal.html";
 import u from "utils/emoji";
 import xss from "xss";
 
-const { $msg, Backbone, Promise, Strophe, _, b64_sha1, f, sizzle, moment } = converse.env;
+const { $msg, Backbone, Promise, Strophe, _, f, sizzle, moment } = converse.env;
 
 
 converse.plugins.add('converse-chatview', {
@@ -1061,7 +1061,7 @@ converse.plugins.add('converse-chatview', {
                     const storage = _converse.config.get('storage'),
                           id = `converse.emoji-${_converse.bare_jid}`;
                     _converse.emojipicker = new _converse.EmojiPicker({'id': id});
-                    _converse.emojipicker.browserStorage = new Backbone.BrowserStorage[storage](id);
+                    _converse.emojipicker.browserStorage = new Backbone.BrowserStorage(id, storage);
                     _converse.emojipicker.fetch();
                 }
                 this.emoji_picker_view = new _converse.EmojiPickerView({
