@@ -125,7 +125,7 @@ converse.plugins.add('converse-muc', {
         _converse.router.route('converse/room?jid=:jid', openRoom);
 
 
-        _converse.openChatRoom = function (jid, settings, bring_to_foreground) {
+        _converse.openChatRoom = async function (jid, settings, bring_to_foreground) {
             /* Opens a groupchat, making sure that certain attributes
              * are correct, for example that the "type" is set to
              * "chatroom".
@@ -133,7 +133,7 @@ converse.plugins.add('converse-muc', {
             settings.type = _converse.CHATROOMS_TYPE;
             settings.id = jid;
             settings.box_id = b64_sha1(jid)
-            const chatbox = _converse.chatboxes.getChatBox(jid, settings, true);
+            const chatbox = await _converse.chatboxes.getChatBox(jid, settings, true);
             chatbox.trigger('show', true);
             return chatbox;
         }
@@ -1192,7 +1192,7 @@ converse.plugins.add('converse-muc', {
         });
 
 
-        _converse.onDirectMUCInvitation = function (message) {
+        _converse.onDirectMUCInvitation = async function (message) {
             /* A direct MUC invitation to join a groupchat has been received
              * See XEP-0249: Direct MUC invitations.
              *
@@ -1225,8 +1225,7 @@ converse.plugins.add('converse-muc', {
                 }
             }
             if (result === true) {
-                const chatroom = _converse.openChatRoom(
-                    room_jid, {'password': x_el.getAttribute('password') });
+                const chatroom = await _converse.openChatRoom(room_jid, {'password': x_el.getAttribute('password') });
 
                 if (chatroom.get('connection_status') === converse.ROOMSTATUS.DISCONNECTED) {
                     _converse.chatboxviews.get(room_jid).join();
@@ -1363,6 +1362,7 @@ converse.plugins.add('converse-muc', {
                  * @param {(string[]|string)} jid|jids The JID or array of
                  *     JIDs of the chatroom(s) to create
                  * @param {object} [attrs] attrs The room attributes
+                 * @returns {Promise} Promise which resolves with the Backbone.Model representing the chat.
                  */
                 'create' (jids, attrs) {
                     if (_.isString(attrs)) {
@@ -1452,7 +1452,7 @@ converse.plugins.add('converse-muc', {
                 },
 
                 /**
-                 * Returns an object representing a MUC chatroom (aka groupchat)
+                 * Fetches the object representing a MUC chatroom (aka groupchat)
                  *
                  * @method _converse.api.rooms.get
                  * @param {string} [jid] The room JID (if not specified, all rooms will be returned).
@@ -1464,6 +1464,7 @@ converse.plugins.add('converse-muc', {
                  *     the user's JID will be used.
                  * @param {boolean} create A boolean indicating whether the room should be created
                  *     if not found (default: `false`)
+                 * @returns {Promise} Promise which resolves with the Backbone.Model representing the chat.
                  * @example
                  * _converse.api.waitUntil('roomsAutoJoined').then(() => {
                  *     const create_if_not_found = true;

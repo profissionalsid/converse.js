@@ -4,8 +4,6 @@
 // Copyright (c) 2013-2018, the Converse.js developers
 // Licensed under the Mozilla Public License (MPLv2)
 
-"use strict";
-
 import { $build, $iq, $msg, $pres, SHA1, Strophe } from "strophe.js";
 import Backbone from "backbone";
 import BrowserStorage from "backbone.browserStorage";

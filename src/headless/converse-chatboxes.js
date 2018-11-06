@@ -259,6 +259,15 @@ converse.plugins.add('converse-chatboxes', {
                 });
             },
 
+            fetchMessages () {
+                this.messagesFetchedPromise = new Promise((resolve, reject) => this.messages.fetch({
+                        'add': true,
+                        'success': resolve,
+                        'error': reject
+                    })
+                );
+            },
+
             addRelatedContact (contact) {
                 if (!_.isUndefined(contact)) {
                     this.contact = contact;
@@ -532,31 +541,24 @@ converse.plugins.add('converse-chatboxes', {
                 return attrs;
             },
 
-            createMessage (message, original_stanza) {
+            async createMessage (message, original_stanza) {
                 /* Create a Backbone.Message object inside this chat box
                  * based on the identified message stanza.
                  */
-                const that = this;
-                function _create (attrs) {
-                    const is_csn = u.isOnlyChatStateNotification(attrs);
-                    if (is_csn && (attrs.is_delayed ||
-                            (attrs.type === 'groupchat' && Strophe.getResourceFromJid(attrs.from) == that.get('nick')))) {
-                        // XXX: MUC leakage
-                        // No need showing delayed or our own CSN messages
-                        return;
-                    } else if (!is_csn && !attrs.file && !attrs.plaintext && !attrs.message && !attrs.oob_url && attrs.type !== 'error') {
-                        // TODO: handle <subject> messages (currently being done by ChatRoom)
-                        return;
-                    } else {
-                        return that.messages.create(attrs);
-                    }
-                }
-                const result = this.getMessageAttributesFromStanza(message, original_stanza)
-                if (typeof result.then === "function") {
-                    return new Promise((resolve, reject) => result.then(attrs => resolve(_create(attrs))));
+                await this.messagesFetchedPromise;
+                const attrs = await this.getMessageAttributesFromStanza(message, original_stanza),
+                      is_csn = u.isOnlyChatStateNotification(attrs);
+
+                if (is_csn && (attrs.is_delayed ||
+                        (attrs.type === 'groupchat' && Strophe.getResourceFromJid(attrs.from) == this.get('nick')))) {
+                    // XXX: MUC leakage
+                    // No need showing delayed or our own CSN messages
+                    return;
+                } else if (!is_csn && !attrs.file && !attrs.plaintext && !attrs.message && !attrs.oob_url && attrs.type !== 'error') {
+                    // TODO: handle <subject> messages (currently being done by ChatRoom)
+                    return;
                 } else {
-                    const message = _create(result)
-                    return Promise.resolve(message);
+                    return this.messages.create(attrs);
                 }
             },
 
@@ -634,14 +636,14 @@ converse.plugins.add('converse-chatboxes', {
                 });
             },
 
-            onErrorMessage (message) {
+            async onErrorMessage (message) {
                 /* Handler method for all incoming error message stanzas
                 */
                 const from_jid =  Strophe.getBareJidFromJid(message.getAttribute('from'));
                 if (utils.isSameBareJID(from_jid, _converse.bare_jid)) {
                     return true;
                 }
-                const chatbox = this.getChatBox(from_jid);
+                const chatbox = await this.getChatBox(from_jid);
                 if (!chatbox) {
                     return true;
                 }
@@ -662,7 +664,7 @@ converse.plugins.add('converse-chatboxes', {
                 }
             },
 
-            onMessage (stanza) {
+            async onMessage (stanza) {
                 /* Handler method for all incoming single-user chat "message"
                  * stanzas.
                  *
@@ -730,22 +732,20 @@ converse.plugins.add('converse-chatboxes', {
                 }
                 // Get chat box, but only create a new one when the message has a body.
                 const has_body = sizzle(`body, encrypted[xmlns="${Strophe.NS.OMEMO}"]`).length > 0;
-                const chatbox = this.getChatBox(contact_jid, attrs, has_body);
+                const chatbox = await this.getChatBox(contact_jid, attrs, has_body);
                 if (chatbox && !chatbox.handleMessageCorrection(stanza)) {
                     const msgid = stanza.getAttribute('id'),
                           message = msgid && chatbox.messages.findWhere({msgid});
-                    if (!message) {
-                        // Only create the message when we're sure it's not a duplicate
-                        chatbox.createMessage(stanza, original_stanza)
-                            .then(msg => chatbox.incrementUnreadMsgCounter(msg))
-                            .catch(_.partial(_converse.log, _, Strophe.LogLevel.FATAL));
+                    if (!message) { // Only create the message when we're sure it's not a duplicate
+                        const msg = await chatbox.createMessage(stanza, original_stanza);
+                        chatbox.incrementUnreadMsgCounter(msg);
                     }
                 }
                 _converse.emit('message', {'stanza': original_stanza, 'chatbox': chatbox});
                 return true;
             },
 
-            getChatBox (jid, attrs={}, create) {
+            async getChatBox (jid, attrs={}, create) {
                 /* Returns a chat box or optionally return a newly
                  * created one if one doesn't exist.
                  *
@@ -761,7 +761,8 @@ converse.plugins.add('converse-chatboxes', {
                 }
                 jid = Strophe.getBareJidFromJid(jid.toLowerCase());
 
-                let  chatbox = this.get(Strophe.getBareJidFromJid(jid));
+                await _converse.api.waitUntil('chatBoxesFetched');
+                let chatbox = this.get(Strophe.getBareJidFromJid(jid));
                 if (!chatbox && create) {
                     _.extend(attrs, {'jid': jid, 'id': jid});
                     chatbox = this.create(attrs, {
@@ -840,8 +841,9 @@ converse.plugins.add('converse-chatboxes', {
                  * @method _converse.api.chats.create
                  * @param {string|string[]} jid|jids An jid or array of jids
                  * @param {object} attrs An object containing configuration attributes.
+                 * @returns {Promise} Promise which resolves with the Backbone.Model representing the chat.
                  */
-                'create' (jids, attrs) {
+                async create (jids, attrs) {
                     if (_.isUndefined(jids)) {
                         _converse.log(
                             "chats.create: You need to provide at least one JID",
@@ -853,7 +855,7 @@ converse.plugins.add('converse-chatboxes', {
                         if (attrs && !_.get(attrs, 'fullname')) {
                             attrs.fullname = _.get(_converse.api.contacts.get(jids), 'attributes.fullname');
                         }
-                        const chatbox = _converse.chatboxes.getChatBox(jids, attrs, true);
+                        const chatbox = await _converse.chatboxes.getChatBox(jids, attrs, true);
                         if (_.isNil(chatbox)) {
                             _converse.log("Could not open chatbox for JID: "+jids, Strophe.LogLevel.ERROR);
                             return;
@@ -898,31 +900,34 @@ converse.plugins.add('converse-chatboxes', {
                  * });
                  *
                  */
-                'open' (jids, attrs) {
-                    return new Promise((resolve, reject) => {
-                        Promise.all([
-                            _converse.api.waitUntil('rosterContactsFetched'),
-                            _converse.api.waitUntil('chatBoxesFetched')
-                        ]).then(() => {
-                            if (_.isUndefined(jids)) {
-                                const err_msg = "chats.open: You need to provide at least one JID";
-                                _converse.log(err_msg, Strophe.LogLevel.ERROR);
-                                reject(new Error(err_msg));
-                            } else if (_.isString(jids)) {
-                                resolve(_converse.api.chats.create(jids, attrs).trigger('show'));
-                            } else {
-                                resolve(_.map(jids, (jid) => _converse.api.chats.create(jid, attrs).trigger('show')));
-                            }
-                        }).catch(_.partial(_converse.log, _, Strophe.LogLevel.FATAL));
-                    });
+                async open (jids, attrs) {
+                    await Promise.all([
+                        _converse.api.waitUntil('rosterContactsFetched'),
+                        _converse.api.waitUntil('chatBoxesFetched')
+                    ]);
+                    if (_.isUndefined(jids)) {
+                        const err_msg = "chats.open: You need to provide at least one JID";
+                        _converse.log(err_msg, Strophe.LogLevel.ERROR);
+                        throw(new Error(err_msg));
+                    } else if (_.isString(jids)) {
+                        const chat = await _converse.api.chats.create(jids, attrs)
+                        chat.trigger('show');
+                        return chat;
+                    } else {
+                        return _.map(jids, async (jid) => {
+                            const chat = await _converse.api.chats.create(jid, attrs)
+                            chat.trigger('show');
+                            return chat;
+                        });
+                    }
                 },
 
                 /**
-                 * Returns a chat model. The chat should already be open.
+                 * Retrieves a chat model. The chat should already be open.
                  *
                  * @method _converse.api.chats.get
                  * @param {String|string[]} name - e.g. 'buddy@example.com' or ['buddy1@example.com', 'buddy2@example.com']
-                 * @returns {Backbone.Model}
+                 * @returns {Promise} Promise which resolves with the Backbone.Model representing the chat.
                  *
                  * @example
                  * // To return a single chat, provide the JID of the contact you're chatting with in that chat:
