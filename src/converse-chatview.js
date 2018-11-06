@@ -1061,7 +1061,7 @@ converse.plugins.add('converse-chatview', {
                     const storage = _converse.config.get('storage'),
                           id = `converse.emoji-${_converse.bare_jid}`;
                     _converse.emojipicker = new _converse.EmojiPicker({'id': id});
-                    _converse.emojipicker.browserStorage = new Backbone.BrowserStorage(id, storage);
+                    _converse.emojipicker.browserStorage = new _converse.BrowserStorage(id);
                     _converse.emojipicker.fetch();
                 }
                 this.emoji_picker_view = new _converse.EmojiPickerView({

@@ -808,7 +808,7 @@ converse.plugins.add('converse-rosterview', {
                 // Create a model on which we can store filter properties
                 const model = new _converse.RosterFilter();
                 model.id = `converse.rosterfilter-${_converse.bare_jid}`;
-                model.browserStorage = new Backbone.BrowserStorage(this.filter.id, 'local');
+                model.browserStorage = new _converse.BrowserStorage(this.filter.id, 'local');
                 this.filter_view = new _converse.RosterFilterView({'model': model});
                 this.filter_view.model.on('change', this.updateFilter, this);
                 this.filter_view.model.fetch();

@@ -37,27 +37,27 @@ converse.plugins.add('converse-disco', {
 
                 let id = `converse.dataforms-{this.get('jid')}`;
                 this.dataforms = new Backbone.Collection();
-                this.dataforms.browserStorage = new Backbone.BrowserStorage(id, 'session');
+                this.dataforms.browserStorage = new _converse.BrowserStorage(id, 'session');
 
                 id = `converse.features-${this.get('jid')}`
                 this.features = new Backbone.Collection();
-                this.features.browserStorage = new Backbone.BrowserStorage(id, 'session');
+                this.features.browserStorage = new _converse.BrowserStorage(id, 'session');
                 this.features.on('add', this.onFeatureAdded, this);
                 this.features_cached = `${id}--cached`;
 
                 id = `converse.fields-${this.get('jid')}`;
                 this.fields = new Backbone.Collection();
-                this.fields.browserStorage = new Backbone.BrowserStorage(id, 'session');
+                this.fields.browserStorage = new _converse.BrowserStorage(id, 'session');
                 this.fields.on('add', this.onFieldAdded, this);
 
                 id = `converse.identities-${this.get('jid')}`;
                 this.identities = new Backbone.Collection();
-                this.identities.browserStorage = new Backbone.BrowserStorage(id, 'session');
+                this.identities.browserStorage = new _converse.BrowserStorage(id, 'session');
                 this.fetchFeatures();
 
                 id = `converse.disco-items-${this.get('jid')}`;
                 this.items = new _converse.DiscoEntities();
-                this.items.browserStorage = new Backbone.BrowserStorage(id, 'session');
+                this.items.browserStorage = new _converse.BrowserStorage(id, 'session');
                 this.items.fetch();
             },
 
@@ -249,7 +249,7 @@ converse.plugins.add('converse-disco', {
         function initStreamFeatures () {
             const id = `converse.stream-features-${_converse.bare_jid}`;
             _converse.stream_features = new Backbone.Collection();
-            _converse.stream_features.browserStorage = new Backbone.BrowserStorage(id, 'session');
+            _converse.stream_features.browserStorage = new _converse.BrowserStorage(id, 'session');
             _converse.stream_features.fetch({
                 success (collection) {
                     if (collection.length === 0 && _converse.connection.features) {
@@ -273,7 +273,7 @@ converse.plugins.add('converse-disco', {
 
             const id = `converse.disco-entities-${_converse.bare_jid}`;
             _converse.disco_entities = new _converse.DiscoEntities();
-            _converse.disco_entities.browserStorage = new Backbone.BrowserStorage(id, 'session');
+            _converse.disco_entities.browserStorage = new _converse.BrowserStorage(id, 'session');
 
             const collection = await _converse.disco_entities.fetchEntities();
             if (collection.length === 0 || !collection.get(_converse.domain)) {

@@ -311,6 +311,36 @@ _converse.isSingleton = function () {
     return _.includes(['mobile', 'fullscreen', 'embedded'], _converse.view_mode);
 }
 
+
+_converse.initStorage = async function () {
+    /* Set up Backbone.BrowserStorage and localForage for the 3 different stores.
+     */
+    _converse.localStorage = BrowserStorage.localForage.createInstance({
+        'name': 'local',
+        'driver': BrowserStorage.localForage.LOCALSTORAGE
+    });
+    _converse.indexedDB = BrowserStorage.localForage.createInstance({
+        'name': 'indexed',
+        'driver': BrowserStorage.localForage.INDEXEDDB
+    });
+    _converse.sessionStorage = BrowserStorage.localForage.createInstance({
+        'name': 'session'
+    });
+    _converse.storage = {
+        'session': _converse.sessionStorage,
+        'local': _converse.localStorage,
+        'indexed': _converse.indexedDB
+    }
+    await BrowserStorage.sessionStorageInitialized;
+    _converse.sessionStorage.setDriver('sessionStorageWrapper');
+};
+_converse.initStorage();
+
+_converse.BrowserStorage = function (id, storage) {
+    const s = storage ? storage : _converse.storage[_converse.config.get('storage')];
+    return new Backbone.BrowserStorage(id, s);
+}
+
 _converse.router = new Backbone.Router();
 
 
@@ -644,7 +674,7 @@ _converse.initialize = function (settings, callback) {
         } else {
             const id = `converse.xmppstatus-${_converse.bare_jid}`;
             this.xmppstatus = new this.XMPPStatus({'id': id});
-            this.xmppstatus.browserStorage = new Backbone.BrowserStorage(id, 'session');
+            this.xmppstatus.browserStorage = new _converse.BrowserStorage(id, 'session');
             this.xmppstatus.fetch({
                 'success': _.partial(_converse.onStatusInitialized, reconnecting),
                 'error': _.partial(_converse.onStatusInitialized, reconnecting)
@@ -664,7 +694,7 @@ _converse.initialize = function (settings, callback) {
             'trusted': _converse.trusted && true || false,
             'storage': _converse.trusted ? 'local' : 'session'
         });
-        _converse.config.browserStorage = new Backbone.BrowserStorage(id, 'session');
+        _converse.config.browserStorage = new _converse.BrowserStorage(id, 'session');
         _converse.config.fetch();
         _converse.emit('clientConfigInitialized');
     };
@@ -672,7 +702,7 @@ _converse.initialize = function (settings, callback) {
     this.initSession = function () {
         const id = `converse.bosh-session-${_converse.bare_jid}`;
         _converse.session = new Backbone.Model({id});
-        _converse.session.browserStorage = new Backbone.BrowserStorage(id, 'session');
+        _converse.session.browserStorage = new _converse.BrowserStorage(id, 'session');
         _converse.session.fetch();
         _converse.emit('sessionInitialized');
     };
@@ -1131,26 +1161,6 @@ _converse.initialize = function (settings, callback) {
         return _converse;
     };
 
-    this.initStorage = async function () {
-        // TODO: override `sync`, similarly to how localforage-backbone does
-        // it.
-        await BrowserStorage.sessionStorageInitialized;
-        _converse.sessionStorage = BrowserStorage.createInstance({
-            'name': 'session',
-            'driver': localForage.LOCALSTORAGE // FIXME
-        });
-
-        _converse.localStorage = BrowserStorage.createInstance({
-            'name': 'session',
-            'driver': localForage.LOCALSTORAGE
-        });
-
-        _converse.indexedDB = BrowserStorage.createInstance({
-            'name': 'indexed',
-            'driver': localForage.LOCALSTORAGE // FIXME
-        });
-        return Promise.all([_converse.sessionStorage, _converse.localStorage, _converse.indexedDB]);
-    };
 
     this.initPlugins = function () {
         // If initialize gets called a second time (e.g. during tests), then we
@@ -1196,8 +1206,7 @@ _converse.initialize = function (settings, callback) {
         this.connection = settings.connection;
     }
 
-    async function finishInitialization () {
-        await _converse.initStorage();
+    function finishInitialization () {
         _converse.initPlugins();
         _converse.initClientConfig();
         _converse.initConnection();

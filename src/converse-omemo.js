@@ -839,7 +839,7 @@ converse.plugins.add('converse-omemo', {
             initialize () {
                 this.devices = new _converse.Devices();
                 const id = `converse.devicelist-${_converse.bare_jid}-${this.get('jid')}`;
-                this.devices.browserStorage = new Backbone.BrowserStorage(id, 'session');
+                this.devices.browserStorage = new _converse.BrowserStorage(id, _converse.storage['session']);
                 this.fetchDevices();
             },
 
@@ -1003,7 +1003,7 @@ converse.plugins.add('converse-omemo', {
                 const storage = _converse.config.get('storage'),
                       id = `converse.omemosession-${_converse.bare_jid}`;
                 _converse.omemo_store = new _converse.OMEMOStore({'id': id});
-                _converse.omemo_store.browserStorage = new Backbone.BrowserStorage(id, storage);
+                _converse.omemo_store.browserStorage = new _converse.BrowserStorage(id);
             }
             return _converse.omemo_store.fetchSession();
         }
@@ -1015,7 +1015,7 @@ converse.plugins.add('converse-omemo', {
             _converse.devicelists = new _converse.DeviceLists();
             const storage = _converse.config.get('storage'),
                   id = `converse.devicelists-${_converse.bare_jid}`;
-            _converse.devicelists.browserStorage = new Backbone.BrowserStorage(id, storage);
+            _converse.devicelists.browserStorage = new _converse.BrowserStorage(id);
 
             fetchOwnDevices()
                 .then(() => restoreOMEMOSession())

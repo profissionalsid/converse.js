@@ -174,7 +174,7 @@ converse.plugins.add('converse-muc', {
 
                 const id = `converse.occupants-${_converse.bare_jid}${this.get('jid')}`;
                 this.occupants = new _converse.ChatRoomOccupants();
-                this.occupants.browserStorage = new Backbone.BrowserStorage(id, 'session');
+                this.occupants.browserStorage = new _converse.BrowserStorage(id, 'session');
                 this.occupants.chatroom  = this;
                 this.registerHandlers();
             },

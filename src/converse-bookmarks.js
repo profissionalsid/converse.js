@@ -431,10 +431,9 @@ converse.plugins.add('converse-bookmarks', {
                 _converse.chatboxes.on('add', this.renderBookmarkListElement, this);
                 _converse.chatboxes.on('remove', this.renderBookmarkListElement, this);
 
-                const storage = _converse.config.get('storage'),
-                      id = `converse.room-bookmarks${_converse.bare_jid}-list-model`;
+                const id = `converse.room-bookmarks${_converse.bare_jid}-list-model`;
                 this.list_model = new _converse.BookmarksList({'id': id});
-                this.list_model.browserStorage = new Backbone.BrowserStorage(id, storage);
+                this.list_model.browserStorage = new _converse.BrowserStorage(id);
                 this.list_model.fetch();
                 this.render();
                 this.sortAndPositionAllItems();
