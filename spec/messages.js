@@ -132,7 +132,7 @@
             test_utils.openControlBox();
             const contact_jid = mock.cur_names[0].replace(/ /g,'.').toLowerCase() + '@localhost';
             await test_utils.openChatBoxFor(_converse, contact_jid)
-            const view = _converse.chatboxviews.get(contact_jid);
+            const view = await _converse.api.chatviews.get(contact_jid);
             const textarea = view.el.querySelector('textarea.chat-textarea');
             expect(textarea.value).toBe('');
             view.keyPressed({
@@ -580,8 +580,8 @@
             _converse.chatboxes.onMessage(msg);
             await test_utils.waitUntil(() => _converse.api.chats.get().length);
             // Check that the chatbox and its view now exist
-            const chatbox = _converse.chatboxes.get(recipient_jid);
-            const view = _converse.chatboxviews.get(recipient_jid);
+            const chatbox = await _converse.api.chats.get(recipient_jid);
+            const view = await _converse.api.chatviews.get(recipient_jid);
             await new Promise((resolve, reject) => view.once('messageInserted', resolve));
             expect(chatbox).toBeDefined();
             expect(view).toBeDefined();
@@ -601,7 +601,7 @@
         it("will be discarded if it's a malicious message meant to look like a carbon copy",
         mock.initConverseWithPromises(
             null, ['rosterGroupsFetched'], {},
-            function (done, _converse) {
+            async function (done, _converse) {
 
             test_utils.createContacts(_converse, 'current');
             test_utils.openControlBox();
@@ -636,11 +636,11 @@
             _converse.chatboxes.onMessage(msg);
 
             // Check that chatbox for impersonated user is not created.
-            var chatbox = _converse.chatboxes.get(impersonated_jid);
+            let chatbox = await _converse.api.chats.get(impersonated_jid);
             expect(chatbox).not.toBeDefined();
 
             // Check that the chatbox for the malicous user is not created
-            chatbox = _converse.chatboxes.get(sender_jid);
+            chatbox = await _converse.api.chats.get(sender_jid);
             expect(chatbox).not.toBeDefined();
             done();
         }));
@@ -716,7 +716,7 @@
             test_utils.createContacts(_converse, 'current');
             _converse.emit('rosterContactsFetched');
             test_utils.openControlBox();
-            spyOn(_converse, 'emit');
+            spyOn(_converse, 'emit').and.callThrough();
             const contact_name = mock.cur_names[1];
             const contact_jid = contact_name.replace(/ /g,'.').toLowerCase() + '@localhost';
 
@@ -725,8 +725,8 @@
             test_utils.clearChatBoxMessages(_converse, contact_jid);
             const one_day_ago = moment();
             one_day_ago.subtract('days', 1);
-            const chatbox = _converse.chatboxes.get(contact_jid);
-            const view = _converse.chatboxviews.get(contact_jid);
+            const chatbox = await _converse.api.chats.get(contact_jid);
+            const view = await _converse.api.chatviews.get(contact_jid);
 
             let message = 'This is a day old message';
             let msg = $msg({
@@ -810,11 +810,11 @@
             test_utils.createContacts(_converse, 'current');
             _converse.emit('rosterContactsFetched');
             test_utils.openControlBox();
-            spyOn(_converse, 'emit');
+            spyOn(_converse, 'emit').and.callThrough();
             const contact_jid = mock.cur_names[0].replace(/ /g,'.').toLowerCase() + '@localhost';
             await test_utils.openChatBoxFor(_converse, contact_jid)
             expect(_converse.emit).toHaveBeenCalledWith('chatBoxFocused', jasmine.any(Object));
-            const view = _converse.chatboxviews.get(contact_jid);
+            const view = await _converse.api.chatviews.get(contact_jid);
             const message = 'This message is sent from this chatbox';
             spyOn(view.model, 'sendMessage').and.callThrough();
             await test_utils.sendMessage(view, message);
@@ -835,7 +835,7 @@
             test_utils.openControlBox();
             const contact_jid = mock.cur_names[0].replace(/ /g,'.').toLowerCase() + '@localhost';
             await test_utils.openChatBoxFor(_converse, contact_jid)
-            const view = _converse.chatboxviews.get(contact_jid);
+            const view = await _converse.api.chatviews.get(contact_jid);
             const message = '<p>This message contains <em>some</em> <b>markup</b></p>';
             spyOn(view.model, 'sendMessage').and.callThrough();
             await test_utils.sendMessage(view, message);
@@ -856,7 +856,7 @@
             test_utils.openControlBox();
             const contact_jid = mock.cur_names[0].replace(/ /g,'.').toLowerCase() + '@localhost';
             await test_utils.openChatBoxFor(_converse, contact_jid)
-            const view = _converse.chatboxviews.get(contact_jid);
+            const view = await _converse.api.chatviews.get(contact_jid);
             const message = 'This message contains a hyperlink: www.opkode.com';
             spyOn(view.model, 'sendMessage').and.callThrough();
             test_utils.sendMessage(view, message);
@@ -880,7 +880,7 @@
 
             const contact_jid = mock.cur_names[0].replace(/ /g,'.').toLowerCase() + '@localhost';
             await test_utils.openChatBoxFor(_converse, contact_jid)
-            const view = _converse.chatboxviews.get(contact_jid);
+            const view = await _converse.api.chatviews.get(contact_jid);
 
             let message = "http://www.opkode.com/'onmouseover='alert(1)'whatever";
             await test_utils.sendMessage(view, message);
@@ -954,51 +954,45 @@
         }));
 
         it("will render images from their URLs",
-                mock.initConverseWithPromises(
-                    null, ['rosterGroupsFetched', 'chatBoxesFetched'], {},
-                    function (done, _converse) {
+            mock.initConverseWithPromises(
+                null, ['rosterGroupsFetched', 'chatBoxesFetched'], {},
+                async function (done, _converse) {
 
             test_utils.createContacts(_converse, 'current', 1);
             _converse.emit('rosterContactsFetched');
             const base_url = document.URL.split(window.location.pathname)[0];
             let message = base_url+"/logo/conversejs-filled.svg";
             const contact_jid = mock.cur_names[0].replace(/ /g,'.').toLowerCase() + '@localhost';
-            let view;
-            test_utils.openChatBoxFor(_converse, contact_jid)
-            .then(() => {
-                view = _converse.chatboxviews.get(contact_jid);
-                spyOn(view.model, 'sendMessage').and.callThrough();
-                test_utils.sendMessage(view, message);
-                return test_utils.waitUntil(() => view.el.querySelectorAll('.chat-content .chat-image').length, 1000)
-            }).then(() => {
-                expect(view.model.sendMessage).toHaveBeenCalled();
-                const msg = $(view.el).find('.chat-content .chat-msg').last().find('.chat-msg__text');
-                expect(msg.html().trim()).toEqual(
-                    '<!-- src/templates/image.html -->\n'+
-                    '<a href="'+base_url+'/logo/conversejs-filled.svg" target="_blank" rel="noopener"><img class="chat-image img-thumbnail"'+
-                    ' src="' + message + '"></a>');
-                message += "?param1=val1&param2=val2";
-                test_utils.sendMessage(view, message);
-                return test_utils.waitUntil(() => view.el.querySelectorAll('.chat-content .chat-image').length === 2, 1000);
-            }).then(() => {
-                expect(view.model.sendMessage).toHaveBeenCalled();
-                const msg = $(view.el).find('.chat-content').find('.chat-msg').last().find('.chat-msg__text');
-                expect(msg.html().trim()).toEqual(
-                    '<!-- src/templates/image.html -->\n'+
-                    '<a href="'+base_url+'/logo/conversejs-filled.svg?param1=val1&amp;param2=val2" target="_blank" rel="noopener"><img'+
-                    ' class="chat-image img-thumbnail" src="'+message.replace(/&/g, '&amp;')+'"></a>')
+            await test_utils.openChatBoxFor(_converse, contact_jid);
+            const view = await _converse.api.chatviews.get(contact_jid);
+            spyOn(view.model, 'sendMessage').and.callThrough();
+            test_utils.sendMessage(view, message);
+            await test_utils.waitUntil(() => view.el.querySelectorAll('.chat-content .chat-image').length, 1000)
+            expect(view.model.sendMessage).toHaveBeenCalled();
+            let msg = $(view.el).find('.chat-content .chat-msg').last().find('.chat-msg__text');
+            expect(msg.html().trim()).toEqual(
+                '<!-- src/templates/image.html -->\n'+
+                '<a href="'+base_url+'/logo/conversejs-filled.svg" target="_blank" rel="noopener"><img class="chat-image img-thumbnail"'+
+                ' src="' + message + '"></a>');
+            message += "?param1=val1&param2=val2";
+            test_utils.sendMessage(view, message);
+            await test_utils.waitUntil(() => view.el.querySelectorAll('.chat-content .chat-image').length === 2, 1000);
+            expect(view.model.sendMessage).toHaveBeenCalled();
+            msg = $(view.el).find('.chat-content').find('.chat-msg').last().find('.chat-msg__text');
+            expect(msg.html().trim()).toEqual(
+                '<!-- src/templates/image.html -->\n'+
+                '<a href="'+base_url+'/logo/conversejs-filled.svg?param1=val1&amp;param2=val2" target="_blank" rel="noopener"><img'+
+                ' class="chat-image img-thumbnail" src="'+message.replace(/&/g, '&amp;')+'"></a>')
 
-                // Test now with two images in one message
-                message += ' hello world '+base_url+"/logo/conversejs-filled.svg";
-                test_utils.sendMessage(view, message);
-                return test_utils.waitUntil(() => view.el.querySelectorAll('.chat-content .chat-image').length === 4, 1000);
-            }).then(function () {
-                expect(view.model.sendMessage).toHaveBeenCalled();
-                const msg = $(view.el).find('.chat-content').find('.chat-msg').last().find('.chat-msg__text');
-                expect(msg[0].textContent.trim()).toEqual('hello world');
-                expect(msg[0].querySelectorAll('img').length).toEqual(2);
-                done();
-            });
+            // Test now with two images in one message
+            message += ' hello world '+base_url+"/logo/conversejs-filled.svg";
+            test_utils.sendMessage(view, message);
+            await test_utils.waitUntil(() => view.el.querySelectorAll('.chat-content .chat-image').length === 4, 1000);
+            expect(view.model.sendMessage).toHaveBeenCalled();
+            msg = $(view.el).find('.chat-content').find('.chat-msg').last().find('.chat-msg__text');
+            expect(msg[0].textContent.trim()).toEqual('hello world');
+            expect(msg[0].querySelectorAll('img').length).toEqual(2);
+            done();
         }));
 
         it("will render the message time as configured",
@@ -1230,7 +1224,6 @@
                 expect(chatbox).toBeDefined();
                 const view = await _converse.api.chatviews.get(sender_jid);
                 expect(view).toBeDefined();
-                await new Promise((resolve, reject) => view.once('messageInserted', resolve));
 
                 expect(_converse.emit).toHaveBeenCalledWith('message', jasmine.any(Object));
                 // Check that the message was received and check the message parameters
@@ -1343,13 +1336,12 @@
                     expect(_converse.chatboxes.get(sender_jid)).not.toBeDefined();
 
                     _converse.chatboxes.onMessage(msg);
-                    await test_utils.waitUntil(() => _converse.api.chats.get().length);
+                    await test_utils.waitUntil(() => (_converse.api.chats.get().length > 1));
                     expect(_converse.emit).toHaveBeenCalledWith('message', jasmine.any(Object));
 
                     // Check that the chatbox and its view now exist
                     const chatbox = await _converse.api.chats.get(sender_jid);
                     const view = await _converse.api.chatviews.get(sender_jid);
-                    await new Promise((resolve, reject) => view.once('messageInserted', resolve));
 
                     expect(chatbox).toBeDefined();
                     expect(view).toBeDefined();
@@ -1377,7 +1369,7 @@
 
                     _converse.allow_non_roster_messaging = false;
 
-                    spyOn(_converse, 'emit');
+                    spyOn(_converse, 'emit').and.callThrough();
                     const message = 'This is a received message from someone not on the roster';
                     const sender_jid = mock.cur_names[0].replace(/ /g,'.').toLowerCase() + '@localhost';
                     const msg = $msg({
@@ -1396,9 +1388,8 @@
                     // onMessage is a handler for received XMPP messages
                     _converse.chatboxes.onMessage(msg);
 
-                    await test_utils.waitUntil(() => _converse.api.chats.get().length)
-                    const view = _converse.chatboxviews.get(sender_jid);
-                    await new Promise((resolve, reject) => view.once('messageInserted', resolve));
+                    await test_utils.waitUntil(() => (_converse.api.chats.get().length > 1))
+                    const view = await _converse.api.chatviews.get(sender_jid);
 
                     expect(_converse.emit).toHaveBeenCalledWith('message', jasmine.any(Object));
                     // onMessage is a handler for received XMPP messages
@@ -1407,7 +1398,7 @@
                     await test_utils.waitUntil(() => view.model.messages.length);
                     expect(_converse.emit).toHaveBeenCalledWith('message', jasmine.any(Object));
                     // Check that the chatbox and its view now exist
-                    chatbox = _converse.chatboxes.get(sender_jid);
+                    chatbox = await _converse.api.chats.get(sender_jid);
                     expect(chatbox).toBeDefined();
                     expect(view).toBeDefined();
                     // Check that the message was received and check the message parameters
@@ -1460,8 +1451,9 @@
                     let fullname = _converse.xmppstatus.get('fullname');
                     fullname = _.isEmpty(fullname)? _converse.bare_jid: fullname;
                     await _converse.api.chats.open(sender_jid)
-                    var msg_text = 'This message will not be sent, due to an error';
+                    let msg_text = 'This message will not be sent, due to an error';
                     const view = await _converse.api.chatviews.get(sender_jid);
+                    await view.model.messagesFetchedPromise;
                     let message = view.model.messages.create({
                         'msgid': '82bc02ce-9651-4336-baf0-fa04762ed8d2',
                         'fullname': fullname,
@@ -1513,7 +1505,7 @@
                         .c('text', { 'xmlns': "urn:ietf:params:xml:ns:xmpp-stanzas" })
                             .t('Server-to-server connection failed: Connecting failed: connection timeout');
                     _converse.connection._dataRecv(test_utils.createRequest(stanza));
-                    await test_utils.waitUntil(() => view.model.messages.length);
+                    await new Promise((resolve, reject) => view.once('messageInserted', resolve));
                     expect(chat_content.querySelector('.chat-error').textContent).toEqual(error_txt);
                     stanza = $msg({
                             'to': _converse.connection.jid,
@@ -1526,7 +1518,7 @@
                         .c('text', { 'xmlns': "urn:ietf:params:xml:ns:xmpp-stanzas" })
                             .t('Server-to-server connection failed: Connecting failed: connection timeout');
                     _converse.connection._dataRecv(test_utils.createRequest(stanza));
-                    await test_utils.waitUntil(() => view.model.messages.length > 1);
+                    await new Promise((resolve, reject) => view.once('messageInserted', resolve));
                     expect(chat_content.querySelectorAll('.chat-error').length).toEqual(2);
 
                     // If the last message is already an error message,
@@ -1557,6 +1549,7 @@
                             .t('Something else went wrong as well');
                     _converse.connection._dataRecv(test_utils.createRequest(stanza));
                     await test_utils.waitUntil(() => view.model.messages.length > 3);
+                    await new Promise((resolve, reject) => view.once('messageInserted', resolve));
                     expect(chat_content.querySelectorAll('.chat-error').length).toEqual(3);
                     done();
                 }));
@@ -1655,9 +1648,7 @@
                     }).c('body').t(message).up()
                     .c('active', {'xmlns': 'http://jabber.org/protocol/chatstates'}).tree();
                 _converse.chatboxes.onMessage(msg);
-                await test_utils.waitUntil(() => _converse.chatboxviews.keys().length > 1, 1000);
                 const view = await _converse.api.chatviews.get(sender_jid);
-                await new Promise((resolve, reject) => view.once('messageInserted', resolve));
                 await test_utils.waitUntil(() => view.model.messages.length);
                 expect(_converse.chatboxes.getChatBox).toHaveBeenCalled();
                 var chat_content = $(view.el).find('.chat-content:last')[0];
@@ -1809,7 +1800,7 @@
                 _converse.emit('rosterContactsFetched');
                 const contact_jid = mock.cur_names[0].replace(/ /g,'.').toLowerCase() + '@localhost';
                 await test_utils.openChatBoxFor(_converse, contact_jid)
-                const view = await _converse.api.chats.get(contact_jid);
+                const view = await _converse.api.chatviews.get(contact_jid);
                 spyOn(view.model, 'sendMessage').and.callThrough();
                 const base_url = document.URL.split(window.location.pathname)[0];
                 const url = base_url+"/logo/conversejs-filled.svg";

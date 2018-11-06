@@ -36,7 +36,8 @@
                 .tree();
             _converse.chatboxes.onMessage(msg);
 
-            const view = _converse.chatboxviews.get(sender_jid);
+            const view = await _converse.api.chatviews.get(sender_jid);
+            await new Promise((resolve, reject) => view.once('messageInserted', resolve));
             await test_utils.waitUntil(() => view.model.vcard.get('fullname') === 'Max Frankfurter')
             expect(view.el.querySelector('.chat-msg__author').textContent.trim()).toBe('Max Frankfurter');
             const message_content = view.el.querySelector('.chat-msg__text');
@@ -69,7 +70,8 @@
                       'xmlns': 'urn:xmpp:spoiler:0',
                     }).tree();
             _converse.chatboxes.onMessage(msg);
-            const view = _converse.chatboxviews.get(sender_jid);
+            const view = await _converse.api.chatviews.get(sender_jid);
+            await new Promise((resolve, reject) => view.once('messageInserted', resolve));
             await test_utils.waitUntil(() => view.model.vcard.get('fullname') === 'Max Frankfurter')
             expect(_.includes(view.el.querySelector('.chat-msg__author').textContent, 'Max Frankfurter')).toBeTruthy();
             const message_content = view.el.querySelector('.chat-msg__text');
@@ -101,7 +103,7 @@
             _converse.connection._dataRecv(test_utils.createRequest(presence));
             await test_utils.openChatBoxFor(_converse, contact_jid);
             await test_utils.waitUntilDiscoConfirmed(_converse, contact_jid+'/phone', [], [Strophe.NS.SPOILER]);
-            const view = _converse.chatboxviews.get(contact_jid);
+            const view = await _converse.api.chatviews.get(contact_jid);
             spyOn(view, 'onMessageSubmitted').and.callThrough();
             spyOn(_converse.connection, 'send');
 
@@ -140,6 +142,7 @@
             expect(body_el.textContent).toBe('This is the spoiler');
 
             /* Test the HTML spoiler message */
+            await new Promise((resolve, reject) => view.model.messages.once('rendered', resolve));
             expect(view.el.querySelector('.chat-msg__author').textContent.trim()).toBe('Max Mustermann');
 
             const spoiler_msg_el = view.el.querySelector('.chat-msg__text.spoiler');
@@ -178,7 +181,7 @@
             _converse.connection._dataRecv(test_utils.createRequest(presence));
             await test_utils.openChatBoxFor(_converse, contact_jid);
             await test_utils.waitUntilDiscoConfirmed(_converse, contact_jid+'/phone', [], [Strophe.NS.SPOILER]);
-            const view = _converse.chatboxviews.get(contact_jid);
+            const view = await _converse.api.chatviews.get(contact_jid);
 
             await test_utils.waitUntil(() => view.el.querySelector('.toggle-compose-spoiler'));
             let spoiler_toggle = view.el.querySelector('.toggle-compose-spoiler');
@@ -222,6 +225,7 @@
             expect(body_el.textContent).toBe('This is the spoiler');
 
             /* Test the HTML spoiler message */
+            await new Promise((resolve, reject) => view.model.messages.once('rendered', resolve));
             expect(view.el.querySelector('.chat-msg__author').textContent.trim()).toBe('Max Mustermann');
 
             const spoiler_msg_el = view.el.querySelector('.chat-msg__text.spoiler');
