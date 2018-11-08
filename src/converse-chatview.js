@@ -1148,7 +1148,7 @@ converse.plugins.add('converse-chatview', {
                 }
             },
 
-            close (ev) {
+            async close (ev) {
                 if (ev && ev.preventDefault) { ev.preventDefault(); }
                 if (Backbone.history.getFragment() === "converse/chat?jid="+this.model.get('jid')) {
                     _converse.router.navigate('');
@@ -1160,13 +1160,12 @@ converse.plugins.add('converse-chatview', {
                     this.model.sendChatState();
                 }
                 try {
-                    this.model.destroy();
+                    await new Promise((success, err) => this.model.destroy({'success': success, 'error': err}));
                 } catch (e) {
                     _converse.log(e, Strophe.LogLevel.ERROR);
                 }
                 this.remove();
                 _converse.emit('chatBoxClosed', this);
-                return this;
             },
 
             renderEmojiPicker () {

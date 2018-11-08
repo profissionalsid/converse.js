@@ -460,7 +460,9 @@ _converse.initialize = async function (settings, callback) {
         // out or disconnecting in the previous session.
         // This happens in tests. We therefore first clean up.
         Backbone.history.stop();
-        _converse.chatboxviews.closeAllChatBoxes();
+        await _converse.chatboxviews.closeAllChatBoxes();
+        window.localStorage.clear();
+        window.sessionStorage.clear();
         if (_converse.bookmarks) {
             _converse.bookmarks.reset();
         }
@@ -1238,7 +1240,7 @@ _converse.initialize = async function (settings, callback) {
         .then(finishInitialization)
         .catch(_.partial(_converse.log, _, Strophe.LogLevel.FATAL));
     }
-    return init_promise;
+    await init_promise;
 };
 
 /**
