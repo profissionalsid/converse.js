@@ -448,32 +448,34 @@ function finishInitialization () {
     }
 }
 
+async function cleanup () {
+    // Looks like _converse.initialized was called again without logging
+    // out or disconnecting in the previous session.
+    // This happens in tests. We therefore first clean up.
+    Backbone.history.stop();
+    await _converse.chatboxviews.closeAllChatBoxes();
+    window.localStorage.clear();
+    window.sessionStorage.clear();
+    if (_converse.bookmarks) {
+        _converse.bookmarks.reset();
+    }
+    delete _converse.controlboxtoggle;
+    delete _converse.chatboxviews;
+    _converse.connection.reset();
+    _converse.stopListening();
+    _converse.tearDown();
+    delete _converse.config;
+    initClientConfig();
+    _converse.off();
+}
+
 
 _converse.initialize = async function (settings, callback) {
     settings = !_.isUndefined(settings) ? settings : {};
     const init_promise = u.getResolveablePromise();
-
     _.each(PROMISES, addPromise);
-
     if (!_.isUndefined(_converse.connection)) {
-        // Looks like _converse.initialized was called again without logging
-        // out or disconnecting in the previous session.
-        // This happens in tests. We therefore first clean up.
-        Backbone.history.stop();
-        await _converse.chatboxviews.closeAllChatBoxes();
-        window.localStorage.clear();
-        window.sessionStorage.clear();
-        if (_converse.bookmarks) {
-            _converse.bookmarks.reset();
-        }
-        delete _converse.controlboxtoggle;
-        delete _converse.chatboxviews;
-        _converse.connection.reset();
-        _converse.stopListening();
-        _converse.tearDown();
-        delete _converse.config;
-        initClientConfig();
-        _converse.off();
+        await cleanup();
     }
 
     if ('onpagehide' in window) {
