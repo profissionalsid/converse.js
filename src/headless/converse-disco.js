@@ -32,7 +32,6 @@ converse.plugins.add('converse-disco', {
             idAttribute: 'jid',
 
             initialize () {
-
                 this.waitUntilFeaturesDiscovered = utils.getResolveablePromise();
 
                 let id = `converse.dataforms-{this.get('jid')}`;
@@ -293,7 +292,7 @@ converse.plugins.add('converse-disco', {
                 _converse.disco_entities.each((entity) => {
                     entity.features.reset();
                     entity.features.browserStorage._clear();
-                    sessionStorage.setItem(entity.features_cached, false);
+                    sessionStorage.removeItem(entity.features_cached);
                 });
                 _converse.disco_entities.reset();
                 _converse.disco_entities.browserStorage._clear();
